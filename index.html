@@ -104,12 +104,17 @@
           <button id="penMidBtn">中</button>
           <button id="penThickBtn">粗</button>
           <button id="eraserBtn">橡皮</button>
+          <button id="zoomOutBtn" title="缩小">-</button>
+          <button id="zoomResetBtn" title="重置缩放">100%</button>
+          <button id="zoomInBtn" title="放大">+</button>
           <button id="clearCanvasBtn">清空</button>
           <button id="saveCanvasBtn">保存到笔记</button>
           <button id="closeCanvasBtn">关闭</button>
         </div>
       </header>
-      <canvas id="drawCanvas"></canvas>
+      <div id="canvasStage" class="canvas-stage">
+        <canvas id="drawCanvas"></canvas>
+      </div>
     </div>
   </dialog>
 
