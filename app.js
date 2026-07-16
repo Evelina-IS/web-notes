@@ -1240,15 +1240,19 @@ function bindEvents() {
   });
 
   $('studyModeBtn').addEventListener('click', () => {
-    document.body.classList.remove('notes-only');
-    $('studyModeBtn').classList.add('active');
-    $('notesOnlyBtn').classList.remove('active');
+    requestAnimationFrame(() => {
+      document.body.classList.remove('notes-only');
+      $('studyModeBtn').classList.add('active');
+      $('notesOnlyBtn').classList.remove('active');
+    });
   });
 
   $('notesOnlyBtn').addEventListener('click', () => {
-    document.body.classList.add('notes-only');
-    $('notesOnlyBtn').classList.add('active');
-    $('studyModeBtn').classList.remove('active');
+    requestAnimationFrame(() => {
+      document.body.classList.add('notes-only');
+      $('notesOnlyBtn').classList.add('active');
+      $('studyModeBtn').classList.remove('active');
+    });
   });
 
   bindResizer('outlineResizer', '--outline-w', 140, 360, 'left');
