@@ -7,6 +7,7 @@ let state = loadState();
 let settings = loadSettings();
 let activeId = state.activeId || state.notes[0]?.id;
 let saveTimer = null;
+let renderTimer = null;
 let penSize = 4;
 let penColor = '#111827';
 let drawTool = 'pen';
@@ -90,7 +91,18 @@ function persist() {
 
 function queuePersist() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(persist, 250);
+  saveTimer = setTimeout(persist, 700);
+}
+
+function refreshNoteViews() {
+  updatePreview();
+  renderOutline();
+  renderPdfLinks();
+}
+
+function queueRender() {
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(refreshNoteViews, 180);
 }
 
 function activeNote() {
@@ -953,9 +965,7 @@ function bindEvents() {
     const note = activeNote();
     note.body = event.target.value;
     note.updatedAt = now();
-    updatePreview();
-    renderOutline();
-    renderPdfLinks();
+    queueRender();
     queuePersist();
   });
 
