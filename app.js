@@ -14,6 +14,13 @@ let drawing = false;
 let lastPoint = null;
 let canvasApi = null;
 let canvasMode = 'handwrite';
+let canvasZoom = 1;
+let canvasPanX = 0;
+let canvasPanY = 0;
+let touchStartDistance = 0;
+let touchStartZoom = 1;
+let touchPanStart = null;
+let activeCanvasTouches = new Map();
 let autoPushTimer = null;
 let syncInFlight = false;
 let pendingAutoPush = false;
@@ -447,11 +454,37 @@ function fileToDataUrl(file) {
 }
 
 function setupCanvas() {
+  const stage = $('canvasStage');
   const canvas = $('drawCanvas');
   const ctx = canvas.getContext('2d');
 
+  function applyCanvasView() {
+    canvas.style.transform = `translate(${canvasPanX}px, ${canvasPanY}px) scale(${canvasZoom})`;
+    $('zoomResetBtn').textContent = `${Math.round(canvasZoom * 100)}%`;
+  }
+
+  function setCanvasZoom(nextZoom, origin = null) {
+    const previous = canvasZoom;
+    canvasZoom = Math.max(0.5, Math.min(4, nextZoom));
+    if (origin && previous !== canvasZoom) {
+      canvasPanX = origin.x - ((origin.x - canvasPanX) * canvasZoom) / previous;
+      canvasPanY = origin.y - ((origin.y - canvasPanY) * canvasZoom) / previous;
+    }
+    applyCanvasView();
+  }
+
+  function resetCanvasView() {
+    canvasZoom = 1;
+    canvasPanX = 0;
+    canvasPanY = 0;
+    activeCanvasTouches.clear();
+    touchStartDistance = 0;
+    touchPanStart = null;
+    applyCanvasView();
+  }
+
   function resizeCanvas() {
-    const rect = canvas.getBoundingClientRect();
+    const rect = stage.getBoundingClientRect();
     const scale = window.devicePixelRatio || 1;
     const old = document.createElement('canvas');
     old.width = canvas.width;
@@ -471,22 +504,78 @@ function setupCanvas() {
   }
 
   function getPoint(event) {
-    const rect = canvas.getBoundingClientRect();
+    const rect = stage.getBoundingClientRect();
     return {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top,
+      x: (event.clientX - rect.left - canvasPanX) / canvasZoom,
+      y: (event.clientY - rect.top - canvasPanY) / canvasZoom,
       pressure: event.pressure || 0.5,
     };
   }
 
+  function isPenEvent(event) {
+    return event.pointerType === 'pen';
+  }
+
+  function stagePoint(event) {
+    const rect = stage.getBoundingClientRect();
+    return {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
+  }
+
+  function distance(a, b) {
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+
   function start(event) {
     event.preventDefault();
-    canvas.setPointerCapture(event.pointerId);
+    stage.setPointerCapture(event.pointerId);
+    if (!isPenEvent(event)) {
+      const point = stagePoint(event);
+      activeCanvasTouches.set(event.pointerId, point);
+      if (activeCanvasTouches.size === 1) {
+        touchPanStart = {
+          pointerId: event.pointerId,
+          x: point.x,
+          y: point.y,
+          panX: canvasPanX,
+          panY: canvasPanY,
+        };
+      } else if (activeCanvasTouches.size === 2) {
+        const points = [...activeCanvasTouches.values()];
+        touchStartDistance = distance(points[0], points[1]);
+        touchStartZoom = canvasZoom;
+      }
+      return;
+    }
     drawing = true;
     lastPoint = getPoint(event);
   }
 
   function move(event) {
+    if (!isPenEvent(event)) {
+      if (!activeCanvasTouches.has(event.pointerId)) return;
+      event.preventDefault();
+      activeCanvasTouches.set(event.pointerId, stagePoint(event));
+      if (activeCanvasTouches.size === 2) {
+        const points = [...activeCanvasTouches.values()];
+        const nextDistance = distance(points[0], points[1]);
+        const center = {
+          x: (points[0].x + points[1].x) / 2,
+          y: (points[0].y + points[1].y) / 2,
+        };
+        if (touchStartDistance > 0) {
+          setCanvasZoom(touchStartZoom * (nextDistance / touchStartDistance), center);
+        }
+      } else if (activeCanvasTouches.size === 1 && touchPanStart && canvasZoom > 1) {
+        const point = activeCanvasTouches.get(event.pointerId);
+        canvasPanX = touchPanStart.panX + point.x - touchPanStart.x;
+        canvasPanY = touchPanStart.panY + point.y - touchPanStart.y;
+        applyCanvasView();
+      }
+      return;
+    }
     if (!drawing || !lastPoint) return;
     event.preventDefault();
     const next = getPoint(event);
@@ -502,19 +591,43 @@ function setupCanvas() {
 
   function end(event) {
     event.preventDefault();
+    if (!isPenEvent(event)) {
+      activeCanvasTouches.delete(event.pointerId);
+      if (activeCanvasTouches.size === 1) {
+        const [pointerId, point] = [...activeCanvasTouches.entries()][0];
+        touchPanStart = {
+          pointerId,
+          x: point.x,
+          y: point.y,
+          panX: canvasPanX,
+          panY: canvasPanY,
+        };
+      } else {
+        touchPanStart = null;
+        touchStartDistance = 0;
+      }
+      return;
+    }
     drawing = false;
     lastPoint = null;
   }
 
-  canvas.addEventListener('pointerdown', start);
-  canvas.addEventListener('pointermove', move);
-  canvas.addEventListener('pointerup', end);
-  canvas.addEventListener('pointercancel', end);
+  stage.addEventListener('pointerdown', start);
+  stage.addEventListener('pointermove', move);
+  stage.addEventListener('pointerup', end);
+  stage.addEventListener('pointercancel', end);
+  stage.addEventListener('wheel', (event) => {
+    event.preventDefault();
+    const origin = stagePoint(event);
+    const factor = event.deltaY < 0 ? 1.12 : 0.88;
+    setCanvasZoom(canvasZoom * factor, origin);
+  }, { passive: false });
   window.addEventListener('resize', () => {
     if ($('handwriteDialog').open) resizeCanvas();
   });
 
-  return { canvas, ctx, resizeCanvas };
+  applyCanvasView();
+  return { canvas, ctx, resizeCanvas, setCanvasZoom, resetCanvasView };
 }
 
 function updateToolButtons() {
@@ -559,6 +672,7 @@ function openCanvas(mode = 'handwrite') {
   $('handwriteDialog').showModal();
   if (!canvasApi) canvasApi = setupCanvas();
   requestAnimationFrame(() => {
+    canvasApi.resetCanvasView();
     canvasApi.resizeCanvas();
     clearCanvasToWhite();
     updateToolButtons();
@@ -926,6 +1040,18 @@ function bindEvents() {
 
   $('penThickBtn').addEventListener('click', () => {
     penSize = 7;
+  });
+
+  $('zoomOutBtn').addEventListener('click', () => {
+    if (canvasApi) canvasApi.setCanvasZoom(canvasZoom / 1.25);
+  });
+
+  $('zoomResetBtn').addEventListener('click', () => {
+    if (canvasApi) canvasApi.resetCanvasView();
+  });
+
+  $('zoomInBtn').addEventListener('click', () => {
+    if (canvasApi) canvasApi.setCanvasZoom(canvasZoom * 1.25);
   });
 
   $('saveCanvasBtn').addEventListener('click', () => {
