@@ -409,6 +409,16 @@ body.resizing .resizer {
   padding: 0;
 }
 
+.live-text-preview {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  color: #202939;
+  font: 16px/1.78 ui-serif, Georgia, "Times New Roman", "Songti SC", serif;
+}
+
 .preview img {
   max-width: 100%;
   border: 1px solid #cfd8e3;
