@@ -114,7 +114,35 @@ function normalizeNote(note) {
   if (!('activeAttachmentId' in note)) note.activeAttachmentId = note.attachments[0]?.id || null;
   if (!Array.isArray(note.pdfLinks)) note.pdfLinks = [];
   if (!Array.isArray(note.images)) note.images = [];
+  migrateInlineImages(note);
   return note;
+}
+
+function migrateInlineImages(note) {
+  if (!note.body || !note.body.includes('data:image/')) return;
+  const imagePattern = /([!！]?)\[([^\]]*)\]\((data:image\/[^)]+)\)/g;
+  let migrated = false;
+  note.body = note.body.replace(imagePattern, (_, bang, label, dataUrl) => {
+    const name = label || '手写';
+    const image = {
+      id: crypto.randomUUID(),
+      type: 'image',
+      name,
+      dataUrl,
+      createdAt: now(),
+    };
+    note.images.push(image);
+    migrated = true;
+    return `[[image:${image.id}|${name}]]`;
+  });
+  if (migrated) {
+    note.updatedAt = now();
+    setTimeout(() => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      updateSyncState('Images optimized');
+      scheduleAutoPush();
+    }, 0);
+  }
 }
 
 function activeAttachment(note = activeNote()) {
@@ -127,7 +155,11 @@ function renderList() {
   const list = $('noteList');
   list.innerHTML = '';
   const notes = [...state.notes]
-    .filter((note) => !query || `${note.title}\n${note.body}`.toLowerCase().includes(query))
+    .filter((note) => {
+      if (!query) return true;
+      const searchable = `${note.title}\n${String(note.body || '').slice(0, 4000)}`;
+      return searchable.toLowerCase().includes(query);
+    })
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
   for (const note of notes) {
