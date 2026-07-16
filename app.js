@@ -1,5 +1,6 @@
 const STORAGE_KEY = 'web-notes:data';
 const SETTINGS_KEY = 'web-notes:github';
+const DRAFT_KEY = 'web-notes:draft';
 
 const $ = (id) => document.getElementById(id);
 
@@ -54,7 +55,10 @@ function loadState() {
   if (raw) {
     try {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed.notes)) return parsed;
+      if (Array.isArray(parsed.notes)) {
+        applyDraft(parsed);
+        return parsed;
+      }
     } catch {}
   }
   const first = newNote('Welcome');
@@ -68,6 +72,21 @@ function loadState() {
     '```',
   ].join('\n');
   return { version: 1, notes: [first], activeId: first.id, updatedAt: now() };
+}
+
+function applyDraft(nextState) {
+  const raw = localStorage.getItem(DRAFT_KEY);
+  if (!raw) return;
+  try {
+    const draft = JSON.parse(raw);
+    const note = nextState.notes.find((item) => item.id === draft.activeId);
+    if (!note || !draft.updatedAt || Date.parse(draft.updatedAt) < Date.parse(note.updatedAt || 0)) return;
+    note.title = draft.title || note.title;
+    note.body = draft.body || note.body;
+    note.updatedAt = draft.updatedAt;
+    nextState.activeId = draft.activeId;
+    nextState.updatedAt = draft.updatedAt;
+  } catch {}
 }
 
 function loadSettings() {
@@ -84,6 +103,7 @@ function persist() {
   state.activeId = activeId;
   state.updatedAt = now();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  localStorage.removeItem(DRAFT_KEY);
   if (document.activeElement !== $('editor')) renderList();
   updateSyncState('Local saved');
   scheduleAutoPush();
@@ -91,13 +111,23 @@ function persist() {
 
 function queuePersist() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    if ('requestIdleCallback' in window) {
-      requestIdleCallback(persist, { timeout: 3000 });
-    } else {
-      persist();
-    }
-  }, 2200);
+  if (document.activeElement === $('editor')) {
+    const note = activeNote();
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({
+      activeId,
+      title: note.title,
+      body: note.body,
+      updatedAt: note.updatedAt,
+    }));
+    updateSyncState('Draft saved');
+    return;
+  }
+  saveTimer = setTimeout(persist, 700);
+}
+
+function flushDraft() {
+  clearTimeout(saveTimer);
+  persist();
 }
 
 function refreshNoteViews() {
@@ -178,9 +208,9 @@ function renderList() {
     btn.className = `note-item ${note.id === activeId ? 'active' : ''}`;
     btn.innerHTML = `<strong>${escapeHtml(note.title || 'Untitled')}</strong><span>${formatDate(note.updatedAt)}</span>`;
     btn.addEventListener('click', () => {
+      flushDraft();
       activeId = note.id;
       render();
-      persist();
     });
     list.appendChild(btn);
   }
@@ -921,6 +951,7 @@ async function pullFromGithub(options = {}) {
 async function pushToGithub(options = {}) {
   const { silent = false } = options;
   if (silent && !hasGithubSettings()) return false;
+  if (!silent) flushDraft();
   if (syncInFlight) {
     pendingAutoPush = true;
     return false;
@@ -1000,6 +1031,7 @@ async function startAutoSync() {
 
 function bindEvents() {
   $('newNoteBtn').addEventListener('click', () => {
+    flushDraft();
     const note = newNote('Untitled');
     state.notes.unshift(note);
     activeId = note.id;
@@ -1202,6 +1234,7 @@ function bindEvents() {
   $('deleteBtn').addEventListener('click', () => {
     if (state.notes.length <= 1) return;
     if (!confirm('删除当前笔记？')) return;
+    flushDraft();
     state.notes = state.notes.filter((note) => note.id !== activeId);
     activeId = state.notes[0].id;
     persist();
@@ -1232,7 +1265,10 @@ function bindEvents() {
     startAutoSync();
   });
 
-  $('pullBtn').addEventListener('click', () => pullFromGithub());
+  $('pullBtn').addEventListener('click', () => {
+    flushDraft();
+    pullFromGithub();
+  });
   $('pushBtn').addEventListener('click', () => pushToGithub());
 }
 
