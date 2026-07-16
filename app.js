@@ -18,6 +18,7 @@ let lastPoint = null;
 let canvasApi = null;
 let canvasMode = 'handwrite';
 let editingImageId = null;
+let previewMode = false;
 let canvasZoom = 1;
 let canvasPanX = 0;
 let canvasPanY = 0;
@@ -138,6 +139,7 @@ function refreshNoteViews() {
 }
 
 function queueRender() {
+  if (!previewMode) return;
   clearTimeout(renderTimer);
   if (previewFrame) cancelAnimationFrame(previewFrame);
   previewFrame = requestAnimationFrame(() => {
@@ -226,7 +228,7 @@ function render() {
   if (!note) return;
   $('titleInput').value = note.title;
   $('editor').value = note.body;
-  updatePreview();
+  if (previewMode) updatePreview();
   renderOutline();
   renderPdfLinks();
   renderAttachments();
@@ -1075,17 +1077,21 @@ function bindEvents() {
     const note = activeNote();
     note.body = event.target.value;
     note.updatedAt = now();
-    queueRender();
     queuePersist();
   });
 
   $('editor').addEventListener('blur', () => {
-    refreshNoteViews();
+    if (previewMode) refreshNoteViews();
     clearTimeout(saveTimer);
     persist();
   });
 
-  $('refreshPreviewBtn').addEventListener('click', refreshNoteViews);
+  $('togglePreviewBtn').addEventListener('click', () => {
+    previewMode = !previewMode;
+    document.body.classList.toggle('preview-mode', previewMode);
+    $('togglePreviewBtn').textContent = previewMode ? '源码' : '预览';
+    if (previewMode) refreshNoteViews();
+  });
 
   document.querySelectorAll('[data-wrap]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -1241,7 +1247,10 @@ function bindEvents() {
 
   $('studyModeBtn').addEventListener('click', () => {
     requestAnimationFrame(() => {
+      previewMode = false;
       document.body.classList.remove('notes-only');
+      document.body.classList.remove('preview-mode');
+      $('togglePreviewBtn').textContent = '预览';
       $('studyModeBtn').classList.add('active');
       $('notesOnlyBtn').classList.remove('active');
     });
@@ -1249,7 +1258,11 @@ function bindEvents() {
 
   $('notesOnlyBtn').addEventListener('click', () => {
     requestAnimationFrame(() => {
+      previewMode = true;
       document.body.classList.add('notes-only');
+      document.body.classList.add('preview-mode');
+      $('togglePreviewBtn').textContent = '源码';
+      refreshNoteViews();
       $('notesOnlyBtn').classList.add('active');
       $('studyModeBtn').classList.remove('active');
     });
