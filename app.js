@@ -108,20 +108,11 @@ function refreshNoteViews() {
 
 function queueRender() {
   clearTimeout(renderTimer);
+  updatePreview();
   renderTimer = setTimeout(() => {
-    updatePreview();
-    if ('requestIdleCallback' in window) {
-      requestIdleCallback(() => {
-        renderOutline();
-        renderPdfLinks();
-      }, { timeout: 1200 });
-    } else {
-      setTimeout(() => {
-        renderOutline();
-        renderPdfLinks();
-      }, 500);
-    }
-  }, 80);
+    renderOutline();
+    renderPdfLinks();
+  }, 700);
 }
 
 function activeNote() {
