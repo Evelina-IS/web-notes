@@ -108,7 +108,13 @@ function refreshNoteViews() {
 
 function queueRender() {
   clearTimeout(renderTimer);
-  renderTimer = setTimeout(refreshNoteViews, 180);
+  renderTimer = setTimeout(() => {
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(refreshNoteViews, { timeout: 900 });
+    } else {
+      requestAnimationFrame(refreshNoteViews);
+    }
+  }, 320);
 }
 
 function activeNote() {
@@ -1003,6 +1009,7 @@ function bindEvents() {
     const note = activeNote();
     note.body = event.target.value;
     note.updatedAt = now();
+    queueRender();
     queuePersist();
   });
 
