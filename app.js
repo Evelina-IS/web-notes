@@ -9,6 +9,7 @@ let settings = loadSettings();
 let activeId = state.activeId || state.notes[0]?.id;
 let saveTimer = null;
 let renderTimer = null;
+let previewFrame = null;
 let penSize = 4;
 let penColor = '#111827';
 let drawTool = 'pen';
@@ -138,12 +139,16 @@ function refreshNoteViews() {
 
 function queueRender() {
   clearTimeout(renderTimer);
-  updatePreview({ lightweightImages: true });
+  if (previewFrame) cancelAnimationFrame(previewFrame);
+  previewFrame = requestAnimationFrame(() => {
+    previewFrame = null;
+    updatePreview({ lightweightImages: true });
+  });
   renderTimer = setTimeout(() => {
     updatePreview();
     renderOutline();
     renderPdfLinks();
-  }, 700);
+  }, 1500);
 }
 
 function activeNote() {
