@@ -142,7 +142,7 @@ function queueRender() {
   if (previewFrame) cancelAnimationFrame(previewFrame);
   previewFrame = requestAnimationFrame(() => {
     previewFrame = null;
-    updatePreview({ lightweightImages: true, plainHeadings: true });
+    updatePreviewTextOnly();
   });
   renderTimer = setTimeout(() => {
     updatePreview();
@@ -543,6 +543,19 @@ function bindPreviewActions() {
 function updatePreview(options = {}) {
   $('preview').innerHTML = renderMarkdown(activeNote().body, options);
   bindPreviewActions();
+}
+
+function updatePreviewTextOnly() {
+  const preview = $('preview');
+  const note = activeNote();
+  let pre = preview.querySelector('.live-text-preview');
+  if (!pre) {
+    preview.innerHTML = '';
+    pre = document.createElement('pre');
+    pre.className = 'live-text-preview';
+    preview.appendChild(pre);
+  }
+  pre.textContent = note.body;
 }
 
 function insertAtCursor(before, after = '') {
