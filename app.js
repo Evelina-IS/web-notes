@@ -84,14 +84,20 @@ function persist() {
   state.activeId = activeId;
   state.updatedAt = now();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  renderList();
+  if (document.activeElement !== $('editor')) renderList();
   updateSyncState('Local saved');
   scheduleAutoPush();
 }
 
 function queuePersist() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(persist, 700);
+  saveTimer = setTimeout(() => {
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(persist, { timeout: 3000 });
+    } else {
+      persist();
+    }
+  }, 2200);
 }
 
 function refreshNoteViews() {
@@ -997,9 +1003,16 @@ function bindEvents() {
     const note = activeNote();
     note.body = event.target.value;
     note.updatedAt = now();
-    queueRender();
     queuePersist();
   });
+
+  $('editor').addEventListener('blur', () => {
+    refreshNoteViews();
+    clearTimeout(saveTimer);
+    persist();
+  });
+
+  $('refreshPreviewBtn').addEventListener('click', refreshNoteViews);
 
   document.querySelectorAll('[data-wrap]').forEach((button) => {
     button.addEventListener('click', () => {
