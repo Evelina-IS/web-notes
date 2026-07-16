@@ -108,8 +108,9 @@ function refreshNoteViews() {
 
 function queueRender() {
   clearTimeout(renderTimer);
-  updatePreview();
+  updatePreview({ lightweightImages: true });
   renderTimer = setTimeout(() => {
+    updatePreview();
     renderOutline();
     renderPdfLinks();
   }, 700);
@@ -360,7 +361,8 @@ function escapeHtml(text) {
     .replaceAll("'", '&#039;');
 }
 
-function renderMarkdown(markdown) {
+function renderMarkdown(markdown, options = {}) {
+  const { lightweightImages = false } = options;
   const note = normalizeNote(activeNote());
   const codeBlocks = [];
   let text = markdown.replace(/```([\w-]*)\n([\s\S]*?)```/g, (_, lang, code) => {
@@ -375,13 +377,24 @@ function renderMarkdown(markdown) {
       const text = label || `第 ${page} 页`;
       return `<button class="pdf-ref" data-page="${page}" type="button">${text}</button>`;
     })
-    .replace(/[!！]\[([^\]]*)\]\((data:image\/[^)]+)\)/g, '<img alt="$1" src="$2">')
-    .replace(/\[([^\]]+)\]\((data:image\/[^)]+)\)/g, '<figure class="note-image"><img alt="$1" src="$2"><figcaption>$1</figcaption></figure>')
+    .replace(/[!！]\[([^\]]*)\]\((data:image\/[^)]+)\)/g, (_, label, src) => (
+      lightweightImages
+        ? `<figure class="note-image image-placeholder"><div class="image-placeholder-box">${escapeHtml(label || '图片')}</div><figcaption>${escapeHtml(label || '图片')}</figcaption></figure>`
+        : `<img alt="${escapeHtml(label)}" src="${src}">`
+    ))
+    .replace(/\[([^\]]+)\]\((data:image\/[^)]+)\)/g, (_, label, src) => (
+      lightweightImages
+        ? `<figure class="note-image image-placeholder"><div class="image-placeholder-box">${escapeHtml(label || '图片')}</div><figcaption>${escapeHtml(label || '图片')}</figcaption></figure>`
+        : `<figure class="note-image"><img alt="${escapeHtml(label)}" src="${src}"><figcaption>${escapeHtml(label)}</figcaption></figure>`
+    ))
     .replace(/\[PDF:([^\]]+)\]\((data:application\/pdf[^)]+)\)/g, '<iframe title="$1" src="$2"></iframe>')
     .replace(/\[\[image:([A-Za-z0-9-]+)(?:\|([^\]]+))?\]\]/g, (_, id, label) => {
       const image = note.images.find((item) => item.id === id);
       if (!image) return `<span class="missing-embed">图片不存在：${id}</span>`;
       const caption = escapeHtml(label || image.name || '手写');
+      if (lightweightImages) {
+        return `<figure class="note-image image-placeholder" data-image-id="${id}"><button class="edit-image-btn" type="button" data-edit-image="${id}">编辑</button><div class="image-placeholder-box">${caption}</div><figcaption>${caption}</figcaption></figure>`;
+      }
       return `<figure class="note-image" data-image-id="${id}"><button class="edit-image-btn" type="button" data-edit-image="${id}">编辑</button><img alt="${caption}" src="${image.dataUrl}"><figcaption>${caption}</figcaption></figure>`;
     })
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
@@ -487,8 +500,8 @@ function bindPreviewActions() {
   });
 }
 
-function updatePreview() {
-  $('preview').innerHTML = renderMarkdown(activeNote().body);
+function updatePreview(options = {}) {
+  $('preview').innerHTML = renderMarkdown(activeNote().body, options);
   bindPreviewActions();
 }
 
