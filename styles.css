@@ -59,6 +59,7 @@ button:disabled {
   grid-template-columns: 300px 1fr;
   height: 100vh;
   min-height: 600px;
+  overflow: hidden;
 }
 
 .sidebar {
@@ -67,6 +68,7 @@ button:disabled {
   border-right: 1px solid var(--line);
   background: var(--panel);
   min-width: 0;
+  min-height: 0;
 }
 
 .brand {
@@ -108,6 +110,7 @@ button:disabled {
   flex: 1;
   overflow: auto;
   padding: 0 8px 12px;
+  min-height: 0;
 }
 
 .note-item {
@@ -143,12 +146,18 @@ button:disabled {
   padding: 12px;
   display: grid;
   gap: 8px;
+  flex: 0 0 auto;
+  background: var(--panel);
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
 }
 
 .workspace {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
 }
 
 .topbar {
@@ -158,6 +167,10 @@ button:disabled {
   padding: 12px;
   border-bottom: 1px solid var(--line);
   background: var(--panel);
+  flex: 0 0 auto;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .title-input {
@@ -174,7 +187,14 @@ button:disabled {
   display: flex;
   gap: 6px;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  min-width: 0;
+  scrollbar-width: thin;
+}
+
+.toolbar button {
+  flex: 0 0 auto;
 }
 
 #deleteBtn {
@@ -193,7 +213,7 @@ button:disabled {
 }
 
 body.notes-only .study-grid {
-  grid-template-columns: 1fr;
+  grid-template-columns: 0 0 minmax(520px, 1fr) 0 0;
 }
 
 body.notes-only .outline-pane,
@@ -203,11 +223,13 @@ body.notes-only .resizer {
 }
 
 body.notes-only .editor-grid {
-  grid-template-columns: 1fr;
+  grid-template-columns: 0 minmax(0, 1fr);
 }
 
 body.notes-only #editor {
-  display: none;
+  visibility: hidden;
+  padding: 0;
+  border: 0;
 }
 
 body.notes-only .preview {
@@ -794,6 +816,10 @@ body.resizing .resizer {
     min-height: 1200px;
   }
 
+  body.notes-only .study-grid {
+    grid-template-columns: 1fr;
+  }
+
   .resizer {
     display: none;
   }
@@ -807,6 +833,10 @@ body.resizing .resizer {
   .editor-grid {
     grid-template-columns: 1fr;
     height: auto;
+  }
+
+  body.notes-only .editor-grid {
+    grid-template-columns: 1fr;
   }
 
   #editor {
@@ -828,5 +858,10 @@ body.resizing .resizer {
   .topbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
   }
 }
