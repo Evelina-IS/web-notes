@@ -223,13 +223,11 @@ body.notes-only .resizer {
 }
 
 body.notes-only .editor-grid {
-  grid-template-columns: 0 minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 body.notes-only #editor {
-  visibility: hidden;
-  padding: 0;
-  border: 0;
+  display: none;
 }
 
 body.notes-only .preview {
@@ -325,7 +323,7 @@ body.resizing .resizer {
   height: 100%;
   min-height: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 #editor {
@@ -335,13 +333,17 @@ body.resizing .resizer {
   border: 0;
   border-right: 1px solid var(--line);
   outline: none;
-  padding: 20px;
-  font: 15px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  background: #fbfcfd;
+  padding: 24px 28px;
+  font: 15px/1.75 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background:
+    linear-gradient(rgba(24, 32, 47, 0.035) 1px, transparent 1px) 0 0 / 100% 26px,
+    #fbfcfd;
   color: var(--text);
+  tab-size: 2;
 }
 
 .preview {
+  display: none;
   overflow: auto;
   padding: 34px 44px;
   background:
@@ -350,6 +352,14 @@ body.resizing .resizer {
     var(--panel);
   color: #202939;
   font: 16px/1.78 ui-serif, Georgia, "Times New Roman", "Songti SC", serif;
+}
+
+body.preview-mode #editor {
+  display: none;
+}
+
+body.preview-mode .preview {
+  display: block;
 }
 
 .preview > * {
