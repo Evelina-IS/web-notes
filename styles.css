@@ -709,6 +709,20 @@ body.resizing .resizer {
     background: #ffffff;
   }
 
+  body::after {
+    content: "Evelina's Note";
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    z-index: 9999;
+    transform: translate(-50%, -50%) rotate(-28deg);
+    color: rgba(31, 122, 92, 0.12);
+    font: 700 54pt/1 Inter, ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: 0;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
   .sidebar,
   .topbar,
   .outline-pane,
