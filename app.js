@@ -142,7 +142,7 @@ function queueRender() {
   if (previewFrame) cancelAnimationFrame(previewFrame);
   previewFrame = requestAnimationFrame(() => {
     previewFrame = null;
-    updatePreview({ lightweightImages: true });
+    updatePreview({ lightweightImages: true, plainHeadings: true });
   });
   renderTimer = setTimeout(() => {
     updatePreview();
@@ -397,7 +397,7 @@ function escapeHtml(text) {
 }
 
 function renderMarkdown(markdown, options = {}) {
-  const { lightweightImages = false } = options;
+  const { lightweightImages = false, plainHeadings = false } = options;
   const note = normalizeNote(activeNote());
   const codeBlocks = [];
   let text = markdown.replace(/```([\w-]*)\n([\s\S]*?)```/g, (_, lang, code) => {
@@ -450,6 +450,11 @@ function renderMarkdown(markdown, options = {}) {
 
     const heading = /^(#{1,3})\s+(.+)$/.exec(line);
     if (heading) {
+      if (plainHeadings) {
+        blocks.push(`<p>${renderInline(line)}</p>`);
+        index += 1;
+        continue;
+      }
       const level = heading[1].length;
       blocks.push(`<h${level}>${renderInline(heading[2])}</h${level}>`);
       index += 1;
