@@ -19,6 +19,9 @@ let canvasPanX = 0;
 let canvasPanY = 0;
 let touchStartDistance = 0;
 let touchStartZoom = 1;
+let touchStartCenter = null;
+let touchStartPanX = 0;
+let touchStartPanY = 0;
 let touchPanStart = null;
 let activeCanvasTouches = new Map();
 let autoPushTimer = null;
@@ -479,6 +482,7 @@ function setupCanvas() {
     canvasPanY = 0;
     activeCanvasTouches.clear();
     touchStartDistance = 0;
+    touchStartCenter = null;
     touchPanStart = null;
     applyCanvasView();
   }
@@ -528,6 +532,13 @@ function setupCanvas() {
     return Math.hypot(a.x - b.x, a.y - b.y);
   }
 
+  function midpoint(a, b) {
+    return {
+      x: (a.x + b.x) / 2,
+      y: (a.y + b.y) / 2,
+    };
+  }
+
   function start(event) {
     event.preventDefault();
     stage.setPointerCapture(event.pointerId);
@@ -545,7 +556,10 @@ function setupCanvas() {
       } else if (activeCanvasTouches.size === 2) {
         const points = [...activeCanvasTouches.values()];
         touchStartDistance = distance(points[0], points[1]);
+        touchStartCenter = midpoint(points[0], points[1]);
         touchStartZoom = canvasZoom;
+        touchStartPanX = canvasPanX;
+        touchStartPanY = canvasPanY;
       }
       return;
     }
@@ -561,14 +575,13 @@ function setupCanvas() {
       if (activeCanvasTouches.size === 2) {
         const points = [...activeCanvasTouches.values()];
         const nextDistance = distance(points[0], points[1]);
-        const center = {
-          x: (points[0].x + points[1].x) / 2,
-          y: (points[0].y + points[1].y) / 2,
-        };
-        if (touchStartDistance > 0) {
+        const center = midpoint(points[0], points[1]);
+        if (touchStartDistance > 0 && touchStartCenter) {
+          canvasPanX = touchStartPanX + center.x - touchStartCenter.x;
+          canvasPanY = touchStartPanY + center.y - touchStartCenter.y;
           setCanvasZoom(touchStartZoom * (nextDistance / touchStartDistance), center);
         }
-      } else if (activeCanvasTouches.size === 1 && touchPanStart && canvasZoom > 1) {
+      } else if (activeCanvasTouches.size === 1 && touchPanStart) {
         const point = activeCanvasTouches.get(event.pointerId);
         canvasPanX = touchPanStart.panX + point.x - touchPanStart.x;
         canvasPanY = touchPanStart.panY + point.y - touchPanStart.y;
@@ -605,6 +618,7 @@ function setupCanvas() {
       } else {
         touchPanStart = null;
         touchStartDistance = 0;
+        touchStartCenter = null;
       }
       return;
     }
