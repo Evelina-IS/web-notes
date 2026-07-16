@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Notes</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div>
+          <h1>Notes</h1>
+          <span id="syncState">Local</span>
+        </div>
+        <button id="newNoteBtn" title="新建笔记">+</button>
+      </div>
+
+      <input id="searchInput" class="search" placeholder="搜索笔记">
+      <div id="noteList" class="note-list"></div>
+
+      <div class="sync-panel">
+        <button id="pullBtn">从 GitHub 拉取</button>
+        <button id="pushBtn">同步到 GitHub</button>
+        <button id="settingsBtn">同步设置</button>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <input id="titleInput" class="title-input" placeholder="Untitled">
+        <div class="toolbar">
+          <button data-wrap="**" title="加粗">B</button>
+          <button data-wrap="*" title="斜体">I</button>
+          <button id="codeBtn" title="代码块">{ }</button>
+          <button id="imageBtn" title="插入图片">图片</button>
+          <button id="pdfBtn" title="上传 PDF 课件">上传 PDF</button>
+          <button id="pdfRefBtn" title="插入 PDF 页码快捷方式">页码链接</button>
+          <button id="handwriteBtn" title="手写笔记">手写</button>
+          <button id="printBtn" title="导出 PDF">导出 PDF</button>
+          <button id="studyModeBtn" title="学习模式">学习模式</button>
+          <button id="notesOnlyBtn" title="纯笔记">纯笔记</button>
+          <button id="deleteBtn" title="删除笔记">删除</button>
+        </div>
+      </header>
+
+      <section class="study-grid">
+        <aside class="outline-pane">
+          <section>
+            <div class="panel-head">
+              <strong>大纲</strong>
+            </div>
+            <div id="outlineList" class="outline-list"></div>
+          </section>
+          <section>
+            <div class="panel-head">
+              <strong>PDF 标记</strong>
+            </div>
+            <div id="pdfLinkList" class="pdf-link-list"></div>
+          </section>
+        </aside>
+
+        <div id="outlineResizer" class="resizer" title="拖动调整大纲宽度"></div>
+
+        <div class="notes-pane">
+          <div class="editor-grid">
+            <textarea id="editor" spellcheck="false" placeholder="写 Markdown..."></textarea>
+            <article id="preview" class="preview"></article>
+          </div>
+        </div>
+
+        <div id="pdfResizer" class="resizer" title="拖动调整 PDF 宽度"></div>
+
+        <aside class="pdf-pane">
+          <div class="pdf-head">
+            <div>
+              <strong>PDF 课件</strong>
+              <span id="pdfMeta">当前笔记无 PDF</span>
+            </div>
+            <button id="openPdfBtn">新标签打开</button>
+          </div>
+          <div id="attachmentList" class="attachment-list"></div>
+          <div id="pdfViewer" class="pdf-viewer">
+            <p>上传 PDF 后会在这里预览。</p>
+          </div>
+        </aside>
+      </section>
+    </main>
+  </div>
+
+  <input id="imageInput" type="file" accept="image/*" hidden>
+  <input id="pdfInput" type="file" accept="application/pdf" hidden>
+
+  <dialog id="handwriteDialog" class="handwrite-dialog">
+    <div class="handwrite-panel">
+      <header>
+        <strong id="canvasTitle">手写笔记</strong>
+        <div>
+          <button id="penBlackBtn">黑</button>
+          <button id="penRedBtn">红</button>
+          <button id="penBlueBtn">蓝</button>
+          <button id="penThinBtn">细</button>
+          <button id="penMidBtn">中</button>
+          <button id="penThickBtn">粗</button>
+          <button id="eraserBtn">橡皮</button>
+          <button id="clearCanvasBtn">清空</button>
+          <button id="saveCanvasBtn">保存到笔记</button>
+          <button id="closeCanvasBtn">关闭</button>
+        </div>
+      </header>
+      <canvas id="drawCanvas"></canvas>
+    </div>
+  </dialog>
+
+  <dialog id="settingsDialog">
+    <form method="dialog" class="settings">
+      <h2>GitHub 同步</h2>
+      <label>
+        Owner
+        <input id="ownerInput" placeholder="你的 GitHub 用户名">
+      </label>
+      <label>
+        Repo
+        <input id="repoInput" placeholder="notes-data">
+      </label>
+      <label>
+        Path
+        <input id="pathInput" placeholder="notes.json">
+      </label>
+      <label>
+        Token
+        <input id="tokenInput" type="password" placeholder="fine-grained token">
+      </label>
+      <label class="check-label">
+        <input id="autoSyncInput" type="checkbox">
+        自动 pull / push
+      </label>
+      <p>Token 需要对该仓库有 Contents 读写权限，只保存在当前浏览器。</p>
+      <menu>
+        <button value="cancel">取消</button>
+        <button id="saveSettingsBtn" value="default">保存</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <script src="./app.js"></script>
+</body>
+</html>
