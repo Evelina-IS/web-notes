@@ -14,6 +14,7 @@ let drawing = false;
 let lastPoint = null;
 let canvasApi = null;
 let canvasMode = 'handwrite';
+let editingImageId = null;
 let canvasZoom = 1;
 let canvasPanX = 0;
 let canvasPanY = 0;
@@ -326,7 +327,8 @@ function renderMarkdown(markdown) {
     .replace(/\[\[image:([A-Za-z0-9-]+)(?:\|([^\]]+))?\]\]/g, (_, id, label) => {
       const image = note.images.find((item) => item.id === id);
       if (!image) return `<span class="missing-embed">图片不存在：${id}</span>`;
-      return `<figure class="note-image"><img alt="${escapeHtml(label || image.name || '手写')}" src="${image.dataUrl}"><figcaption>${escapeHtml(label || image.name || '手写')}</figcaption></figure>`;
+      const caption = escapeHtml(label || image.name || '手写');
+      return `<figure class="note-image" data-image-id="${id}"><button class="edit-image-btn" type="button" data-edit-image="${id}">编辑</button><img alt="${caption}" src="${image.dataUrl}"><figcaption>${caption}</figcaption></figure>`;
     })
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
 
@@ -420,6 +422,13 @@ function bindPreviewActions() {
     button.addEventListener('click', () => {
       const page = Number.parseInt(button.dataset.page, 10);
       if (Number.isFinite(page)) openPdfPage(page);
+    });
+  });
+  $('preview').querySelectorAll('[data-edit-image]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const note = normalizeNote(activeNote());
+      const image = note.images.find((item) => item.id === button.dataset.editImage);
+      if (image) drawImageOnCanvas(image.dataUrl, image.id);
     });
   });
 }
@@ -594,7 +603,9 @@ function setupCanvas() {
     const next = getPoint(event);
     ctx.globalCompositeOperation = drawTool === 'eraser' ? 'destination-out' : 'source-over';
     ctx.strokeStyle = penColor;
-    ctx.lineWidth = Math.max(1, penSize * (next.pressure || 0.5));
+    ctx.lineWidth = drawTool === 'eraser'
+      ? 34
+      : Math.max(1, penSize * (next.pressure || 0.5));
     ctx.beginPath();
     ctx.moveTo(lastPoint.x, lastPoint.y);
     ctx.lineTo(next.x, next.y);
@@ -680,9 +691,10 @@ function clearCanvasToWhite() {
   ctx.restore();
 }
 
-function openCanvas(mode = 'handwrite') {
+function openCanvas(mode = 'handwrite', imageId = null) {
   canvasMode = mode;
-  $('canvasTitle').textContent = mode === 'image' ? '编辑照片' : '手写笔记';
+  editingImageId = imageId;
+  $('canvasTitle').textContent = imageId ? '编辑图片' : (mode === 'image' ? '编辑照片' : '手写笔记');
   $('handwriteDialog').showModal();
   if (!canvasApi) canvasApi = setupCanvas();
   requestAnimationFrame(() => {
@@ -693,12 +705,12 @@ function openCanvas(mode = 'handwrite') {
   });
 }
 
-function drawImageOnCanvas(dataUrl) {
-  openCanvas('image');
+function drawImageOnCanvas(dataUrl, imageId = null) {
+  openCanvas('image', imageId);
   const image = new Image();
   image.onload = () => {
     const { canvas, ctx } = canvasApi;
-    const rect = canvas.getBoundingClientRect();
+    const rect = $('canvasStage').getBoundingClientRect();
     clearCanvasToWhite();
     const scale = Math.min(rect.width / image.width, rect.height / image.height);
     const width = image.width * scale;
@@ -1073,6 +1085,19 @@ function bindEvents() {
     const dataUrl = canvasApi.canvas.toDataURL('image/png');
     const label = canvasMode === 'image' ? '图片' : '手写';
     const note = normalizeNote(activeNote());
+    if (editingImageId) {
+      const image = note.images.find((item) => item.id === editingImageId);
+      if (image) {
+        image.dataUrl = dataUrl;
+        image.updatedAt = now();
+        note.updatedAt = now();
+        editingImageId = null;
+        updatePreview();
+        persist();
+        $('handwriteDialog').close();
+        return;
+      }
+    }
     const image = {
       id: crypto.randomUUID(),
       type: canvasMode,
@@ -1082,6 +1107,7 @@ function bindEvents() {
     };
     note.images.push(image);
     insertAtCursor(`\n[[image:${image.id}|${label}]]\n`);
+    editingImageId = null;
     $('handwriteDialog').close();
   });
 
